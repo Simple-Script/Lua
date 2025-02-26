@@ -3,80 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lua Script Execution with Fengari</title>
+    <title>Run Python in Browser</title>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
-            background-color: #121212;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        #terminal {
-            background-color: black;
-            border: 1px solid #333;
+            background-color: #f4f4f4;
+            color: #333;
             padding: 20px;
-            width: 60%;
-            height: 70%;
-            overflow-y: auto;
-            box-sizing: border-box;
         }
-        #terminal p {
-            margin: 0;
+        #output {
+            background-color: black;
+            color: white;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 200px;
+        }
+        #python-code {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
-    <div id="terminal">
-        <p>Loading Lua Script...</p>
-    </div>
+    <h1>Run Python Code in the Browser</h1>
+    <textarea id="python-code">
+# Write your Python code here!
+print("Hello from Python in the Browser!")
+for i in range(1, 6):
+    print(f"Loop number {i}")
+    </textarea>
+    <br>
+    <button onclick="runPython()">Run Python</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/fengari@0.2.0/dist/fengari-web.js"></script>
+    <div id="output">Output will be displayed here...</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pyodide@0.23.0/pyodide.js"></script>
     <script>
-        // The Lua code you want to run
-        const luaCode = `
-            print("Hello from Lua!")
-            for i = 1, 5 do
-                print("Loop number: " .. i)
-            end
-        `;
+        let pyodideReadyPromise = loadPyodide();
 
-        // This will be the terminal output area
-        const terminalElement = document.getElementById("terminal");
+        async function runPython() {
+            // Wait for Pyodide to load
+            let pyodide = await pyodideReadyPromise;
 
-        // Create a function to capture the Lua output and display it in the terminal div
-        function redirectPrintToTerminal(L) {
-            fengari.luavm.lua_pushcfunction(L, function(L) {
-                const str = fengari.tojsstring(fengari.luavm.lua_tostring(L, -1));
-                terminalElement.innerHTML += `<p>${str}</p>`;
-                return 0;
-            });
-            fengari.luavm.lua_setglobal(L, "print");
-        }
+            // Get the Python code from the textarea
+            let pythonCode = document.getElementById("python-code").value;
 
-        // Create the Lua state and run the Lua code
-        function runLua() {
-            const L = fengari.luavm.luaL_newstate();
-            fengari.luavm.luaL_openlibs(L);
-            
-            // Redirect print to the terminal element
-            redirectPrintToTerminal(L);
+            // Redirect the output to the 'output' div
+            let outputDiv = document.getElementById("output");
+            outputDiv.textContent = "Running Python...";
 
-            // Load and run the Lua script
-            const luaBytes = fengari.luastring(luaCode);
-            if (fengari.luavm.luaL_loadstring(L, luaBytes) === 0) {
-                fengari.luavm.lua_pcall(L, 0, 0, 0);
-            } else {
-                const error = fengari.tojsstring(fengari.luavm.lua_tostring(L, -1));
-                terminalElement.innerHTML += `<p style="color: red;">Error: ${error}</p>`;
+            try {
+                // Run the Python code using Pyodide
+                let result = await pyodide.runPythonAsync(pythonCode);
+                outputDiv.textContent = result;  // Display the result in the output div
+            } catch (error) {
+                outputDiv.textContent = `Error: ${error.message}`;
             }
         }
-
-        // Start running Lua
-        runLua();
     </script>
 </body>
 </html>
+
