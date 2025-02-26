@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lua Script Execution with Fengari</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #121212;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #terminal {
+            background-color: black;
+            border: 1px solid #333;
+            padding: 20px;
+            width: 60%;
+            height: 70%;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        #terminal p {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal">
+        <p>Loading Lua Script...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fengari@0.2.0/dist/fengari-web.js"></script>
+    <script>
+        // The Lua code you want to run
+        const luaCode = `
+            print("Hello from Lua!")
+            for i = 1, 5 do
+                print("Loop number: " .. i)
+            end
+        `;
+
+        // This will be the terminal output area
+        const terminalElement = document.getElementById("terminal");
+
+        // Create a function to capture the Lua output and display it in the terminal div
+        function redirectPrintToTerminal(L) {
+            fengari.luavm.lua_pushcfunction(L, function(L) {
+                const str = fengari.tojsstring(fengari.luavm.lua_tostring(L, -1));
+                terminalElement.innerHTML += `<p>${str}</p>`;
+                return 0;
+            });
+            fengari.luavm.lua_setglobal(L, "print");
+        }
+
+        // Create the Lua state and run the Lua code
+        function runLua() {
+            const L = fengari.luavm.luaL_newstate();
+            fengari.luavm.luaL_openlibs(L);
+            
+            // Redirect print to the terminal element
+            redirectPrintToTerminal(L);
+
+            // Load and run the Lua script
+            const luaBytes = fengari.luastring(luaCode);
+            if (fengari.luavm.luaL_loadstring(L, luaBytes) === 0) {
+                fengari.luavm.lua_pcall(L, 0, 0, 0);
+            } else {
+                const error = fengari.tojsstring(fengari.luavm.lua_tostring(L, -1));
+                terminalElement.innerHTML += `<p style="color: red;">Error: ${error}</p>`;
+            }
+        }
+
+        // Start running Lua
+        runLua();
+    </script>
+</body>
+</html>
